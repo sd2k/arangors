@@ -15,15 +15,26 @@
 //! ```rust
 //! use arangors::Connection;
 //!
-//! let conn = Connection::establish_jwt("http://localhost:8529", "username", "password").unwrap();
+//! # #[tokio::main]
+//! # async fn main() {
+//! let conn = Connection::establish_jwt("http://localhost:8529", "username", "password")
+//!     .await
+//!     .unwrap();
 //! let conn =
-//!     Connection::establish_basic_auth("http://localhost:8529", "username", "password").unwrap();
+//!     Connection::establish_basic_auth("http://localhost:8529", "username", "password")
+//!     .await
+//!     .unwrap();
+//! # }
 //! ```
 //!
 //! - No authentication
-//! ```rust, ignore
+//! ```rust
 //! use arangors::Connection;
-//! let conn = Connection::establish_without_auth("http://localhost:8529").unwrap();
+//!
+//! # #[tokio::main]
+//! # async fn main() {
+//! let conn = Connection::establish_without_auth("http://localhost:8529").await.unwrap();
+//! # }
 //! ```
 
 use std::{collections::HashMap, sync::Arc};
@@ -88,9 +99,9 @@ impl<S> Connection<S> {
     /// - response code is not 200
     /// - no SERVER header in response header
     /// - SERVER header in response header is not `ArangoDB`
-    pub fn validate_server(&self) -> Result<(), Error> {
+    pub async fn validate_server(&self) -> Result<(), Error> {
         let arango_url = self.arango_url.as_str();
-        let resp = reqwest::get(arango_url)?;
+        let resp = reqwest::get(arango_url).await?;
         // HTTP code 200
         if resp.status().is_success() {
             // have `Server` in header
@@ -134,10 +145,10 @@ impl<S> Connection<S> {
     ///
     /// This function look up accessible database in cache hash map,
     /// and return a reference of database if found.
-    pub fn db(&self, name: &str) -> Result<Database, Error> {
-        let dbs = self.accessible_databases()?;
+    pub async fn db(&self, name: &str) -> Result<Database<'_>, Error> {
+        let dbs = self.accessible_databases().await?;
         if dbs.contains_key(name) {
-            Ok(Database::new(&self, name))
+            Ok(Database::new(&self, name).await)
         } else {
             Err(format_err!("Cannot access to db: {}", name))
         }
@@ -150,13 +161,13 @@ impl<S> Connection<S> {
     ///
     /// This function uses the API that is used to retrieve a list of
     /// all databases the current user can access.
-    pub fn accessible_databases(&self) -> Result<HashMap<String, Permission>, Error> {
+    pub async fn accessible_databases(&self) -> Result<HashMap<String, Permission>, Error> {
         let url = self
             .arango_url
             .join(&format!("/_api/user/{}/database", &self.username))
             .unwrap();
-        let resp = self.session.get(url).send()?;
-        let result = serialize_response(resp)?;
+        let resp = self.session.get(url).send().await?;
+        let result = serialize_response(resp).await?;
         Ok(result)
     }
 }
@@ -172,7 +183,10 @@ impl Connection<Normal> {
     ///
     /// The most secure way to connect to a arangoDB server is via JWT
     /// token authentication, along with TLS encryption.
-    fn establish<T: Into<String>>(arango_url: T, auth: Auth) -> Result<Connection<Normal>, Error> {
+    async fn establish<T: Into<String>>(
+        arango_url: T,
+        auth: Auth<'_>,
+    ) -> Result<Connection<Normal>, Error> {
         let mut conn = Connection {
             arango_url: Url::parse(arango_url.into().as_str())?.join("/").unwrap(),
             username: String::new(),
@@ -180,9 +194,9 @@ impl Connection<Normal> {
             state: Normal,
             phantom: (),
         };
-        conn.validate_server()?;
+        conn.validate_server().await?;
 
-        let mut user: String;
+        let user: String;
         let authorization = match auth {
             Auth::Basic(cred) => {
                 user = String::from(cred.username);
@@ -193,7 +207,7 @@ impl Connection<Normal> {
             Auth::Jwt(cred) => {
                 user = String::from(cred.username);
 
-                let token = conn.jwt_login(cred.username, cred.password)?;
+                let token = conn.jwt_login(cred.username, cred.password).await?;
                 Some(format!("Bearer {}", token))
             }
             Auth::None => {
@@ -229,13 +243,16 @@ impl Connection<Normal> {
     /// ```rust, ignore
     /// use arangors::Connection;
     ///
-    /// let conn = Connection::establish_without_auth("http://localhost:8529").unwrap();
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// let conn = Connection::establish_without_auth("http://localhost:8529").await.unwrap();
+    /// # }
     /// ```
-    pub fn establish_without_auth<T: Into<String>>(
+    pub async fn establish_without_auth<T: Into<String>>(
         arango_url: T,
     ) -> Result<Connection<Normal>, Error> {
         trace!("Establish without auth");
-        Ok(Connection::establish(arango_url.into(), Auth::None)?)
+        Ok(Connection::establish(arango_url.into(), Auth::None).await?)
     }
 
     /// Establish connection to ArangoDB sever with basic auth.
@@ -244,19 +261,19 @@ impl Connection<Normal> {
     /// ```rust
     /// use arangors::Connection;
     ///
+    /// # #[tokio::main]
+    /// # async fn main() {
     /// let conn =
-    ///     Connection::establish_basic_auth("http://localhost:8529", "username", "password").unwrap();
+    ///     Connection::establish_basic_auth("http://localhost:8529", "username", "password").await.unwrap();
+    /// # }
     /// ```
-    pub fn establish_basic_auth(
+    pub async fn establish_basic_auth(
         arango_url: &str,
         username: &str,
         password: &str,
     ) -> Result<Connection<Normal>, Error> {
         trace!("Establish with basic auth");
-        Ok(Connection::establish(
-            arango_url,
-            Auth::basic(username, password),
-        )?)
+        Ok(Connection::establish(arango_url, Auth::basic(username, password)).await?)
     }
 
     /// Establish connection to ArangoDB sever with jwt authentication.
@@ -270,21 +287,21 @@ impl Connection<Normal> {
     /// ```rust
     /// use arangors::Connection;
     ///
-    /// let conn = Connection::establish_jwt("http://localhost:8529", "username", "password").unwrap();
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// let conn = Connection::establish_jwt("http://localhost:8529", "username", "password").await.unwrap();
+    /// # }
     /// ```
-    pub fn establish_jwt(
+    pub async fn establish_jwt(
         arango_url: &str,
         username: &str,
         password: &str,
     ) -> Result<Connection<Normal>, Error> {
         trace!("Establish with jwt");
-        Ok(Connection::establish(
-            arango_url,
-            Auth::jwt(username, password),
-        )?)
+        Ok(Connection::establish(arango_url, Auth::jwt(username, password)).await?)
     }
 
-    fn jwt_login<T: Into<String>>(&self, username: T, password: T) -> Result<String, Error> {
+    async fn jwt_login<T: Into<String>>(&self, username: T, password: T) -> Result<String, Error> {
         #[derive(Deserialize)]
         struct JWT {
             pub jwt: String,
@@ -295,12 +312,19 @@ impl Connection<Normal> {
         map.insert("username", username.into());
         map.insert("password", password.into());
 
-        let jwt: JWT = self.session.post(url).json(&map).send()?.json()?;
+        let jwt: JWT = self
+            .session
+            .post(url)
+            .json(&map)
+            .send()
+            .await?
+            .json()
+            .await?;
         Ok(jwt.jwt)
     }
 
-    pub fn into_admin(self) -> Result<Connection<Admin>, Error> {
-        let dbs = self.accessible_databases()?;
+    pub async fn into_admin(self) -> Result<Connection<Admin>, Error> {
+        let dbs = self.accessible_databases().await?;
         let db = dbs
             .get("_system")
             .ok_or(format_err!("Do not have read access to _system database"))?;
@@ -320,25 +344,31 @@ impl Connection<Admin> {
     /// # Example
     /// ```rust
     /// use arangors::Connection;
-    /// let conn_normal = Connection::establish_jwt("http://localhost:8529", "root", "KWNngteTps7XjrNv").unwrap();
+    ///
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// let conn_normal = Connection::establish_jwt("http://localhost:8529", "root", "KWNngteTps7XjrNv")
+    ///     .await
+    ///     .unwrap();
     /// // consume normal connection and convert it into admin connection
-    /// let conn_admin = conn_normal.into_admin().unwrap();
-    /// let result = conn_admin.create_database("new_db").unwrap();
+    /// let conn_admin = conn_normal.into_admin().await.unwrap();
+    /// let result = conn_admin.create_database("new_db").await.unwrap();
     ///
     /// let mut conn_admin = conn_admin;
-    /// let result = conn_admin.drop_database("new_db").unwrap();
+    /// let result = conn_admin.drop_database("new_db").await.unwrap();
+    /// # }
     /// ```
     /// TODO tweak options on creating database
-    pub fn create_database(&self, name: &str) -> Result<Database, Error> {
+    pub async fn create_database(&self, name: &str) -> Result<Database<'_>, Error> {
         let mut map = HashMap::new();
         map.insert("name", name);
         let url = self.arango_url.join("/_api/database").unwrap();
-        let resp = self.session.post(url).json(&map).send()?;
-        let result: Response<bool> = try_serialize_response(resp);
+        let resp = self.session.post(url).json(&map).send().await?;
+        let result: Response<bool> = try_serialize_response(resp).await;
         match result {
             Response::Ok(resp) => {
                 if resp.result == true {
-                    Ok(self.db(name)?)
+                    Ok(self.db(name).await?)
                 } else {
                     Err(format_err!("Fail to create db. Reason: {:?}", resp))
                 }
@@ -352,11 +382,11 @@ impl Connection<Admin> {
     /// This method require a `&mut self`, which means no other reference
     /// to this `Connection` object are allowed. This design avoid references
     /// to drop database at compile time.
-    pub fn drop_database(&mut self, name: &str) -> Result<(), Error> {
+    pub async fn drop_database(&mut self, name: &str) -> Result<(), Error> {
         let url_path = format!("/_api/database/{}", name);
         let url = self.arango_url.join(&url_path).unwrap();
-        let resp = self.session.delete(url).send()?;
-        let result: Response<bool> = try_serialize_response(resp);
+        let resp = self.session.delete(url).send().await?;
+        let result: Response<bool> = try_serialize_response(resp).await;
         match result {
             Response::Ok(resp) => {
                 if resp.result == true {

@@ -13,37 +13,44 @@ struct User {
     pub password: String,
 }
 
-#[test]
-fn test_aql_str() {
+#[tokio::test]
+async fn test_aql_str() {
     test_setup();
-    let conn = Connection::establish_jwt(URL, "root", "KWNngteTps7XjrNv").unwrap();
-    let db = conn.db("test_db").unwrap();
+    let conn = Connection::establish_jwt(URL, "root", "KWNngteTps7XjrNv")
+        .await
+        .unwrap();
+    let db = conn.db("test_db").await.unwrap();
     let result: Vec<Document<User>> = db
         .aql_str(r#"FOR i in test_collection FILTER i.username=="test2" return i"#)
+        .await
         .unwrap();
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].document.password, "test2_pwd");
 }
 
-#[test]
-fn test_aql() {
+#[tokio::test]
+async fn test_aql() {
     test_setup();
-    let conn = Connection::establish_jwt(URL, "root", "KWNngteTps7XjrNv").unwrap();
-    let db = conn.db("test_db").unwrap();
+    let conn = Connection::establish_jwt(URL, "root", "KWNngteTps7XjrNv")
+        .await
+        .unwrap();
+    let db = conn.db("test_db").await.unwrap();
     let aql = AqlQuery::new(r#"FOR i in test_collection FILTER i.username=="test2" return i"#);
-    let result: Vec<Document<User>> = db.aql_query(aql).unwrap();
+    let result: Vec<Document<User>> = db.aql_query(aql).await.unwrap();
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].document.password, "test2_pwd");
 }
 
-#[test]
-fn test_aql_bind_vars() {
+#[tokio::test]
+async fn test_aql_bind_vars() {
     test_setup();
-    let conn = Connection::establish_jwt(URL, "root", "KWNngteTps7XjrNv").unwrap();
-    let db = conn.db("test_db").unwrap();
+    let conn = Connection::establish_jwt(URL, "root", "KWNngteTps7XjrNv")
+        .await
+        .unwrap();
+    let db = conn.db("test_db").await.unwrap();
     let aql = AqlQuery::new(r#"FOR i in test_collection FILTER i.username==@username return i"#)
         .bind_var("username", "test2");
-    let result: Vec<Document<User>> = db.aql_query(aql).unwrap();
+    let result: Vec<Document<User>> = db.aql_query(aql).await.unwrap();
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].document.password, "test2_pwd");
 }

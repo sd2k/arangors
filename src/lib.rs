@@ -12,12 +12,13 @@
 //! execute AQL query, manage arangoDB in an easy and intuitive way.
 //!
 //! ## NOTICE
-//! `arangors` will stay **synchronous** until the async/await syntax are available in stable channel.
+//! `arangors` will stay **synchronous** until the async/await syntax are
+//! available in stable channel.
 //!
 //! ## Philosophy of arangors
 //!
-//! `arangors` is targeted at ergonomic, intuitive and OOP-like API for ArangoDB,
-//! both top level and low level API for users' choice.
+//! `arangors` is targeted at ergonomic, intuitive and OOP-like API for
+//! ArangoDB, both top level and low level API for users' choice.
 //!
 //! Overall architecture of arangoDB:
 //!
@@ -47,11 +48,14 @@
 //!
 //! - (WIP) Milestone 0.2.x
 //!
-//! Remove cache behaviour and fix severe bugs in 0.2 that only root user can have access to arangoDB, which impose breaking API changes.
+//! Remove cache behaviour and fix severe bugs in 0.2 that only root user can
+//! have access to arangoDB, which impose breaking API changes.
 //!
-//! Fill the unimplemented API in `Connection`, `Database`, `Collection` and `Document`.
+//! Fill the unimplemented API in `Connection`, `Database`, `Collection` and
+//! `Document`.
 //!
-//! In this stage, all operations available for database, collection and document should be implemented.
+//! In this stage, all operations available for database, collection and
+//! document should be implemented.
 //!
 //! - Milestone 0.3.x
 //!
@@ -83,17 +87,20 @@
 //! ```rust
 //! use arangors::Connection;
 //!
-//! // (Recommended) Handy functions
-//! let conn = Connection::establish_jwt("http://localhost:8529", "username", "password").unwrap();
-//! let conn =
-//! Connection::establish_basic_auth("http://localhost:8529", "username", "password").unwrap();
+//! #[tokio::main]
+//! async fn main() {
+//!     // (Recommended) Handy functions
+//!     let conn = Connection::establish_jwt("http://localhost:8529", "username", "password").await.unwrap();
+//!     let conn =
+//!     Connection::establish_basic_auth("http://localhost:8529", "username", "password").await.unwrap();
+//! }
 //! ```
 //!
 //! - Without authentication, only use in evaluation setting
 //!
 //! ``` rust, ignore
 //! use arangors::Connection;
-//! let conn = Connection::establish_without_auth("http://localhost:8529").unwrap();
+//! let conn = Connection::establish_without_auth("http://localhost:8529").await.unwrap();
 //! ```
 //!
 //! ### Database && Collection
@@ -101,10 +108,11 @@
 //! ```rust
 //! use arangors::Connection;
 //!
-//! fn main(){
-//!     let conn = Connection::establish_jwt("http://localhost:8529", "username", "password").unwrap();
-//!     let db = conn.db("test_db").unwrap();
-//!     let collection = db.collection("test_collection").unwrap();
+//! #[tokio::main]
+//! async fn main() {
+//!     let conn = Connection::establish_jwt("http://localhost:8529", "username", "password").await.unwrap();
+//!     let db = conn.db("test_db").await.unwrap();
+//!     let collection = db.collection("test_collection").await.unwrap();
 //! }
 //! ```
 //!
@@ -141,9 +149,12 @@
 //! use serde_json::Value;
 //! use arangors::Connection;
 //!
-//! let conn = Connection::establish_jwt("http://localhost:8529", "username", "password").unwrap();
-//! let db = conn.db("test_db").unwrap();
-//! let resp: Vec<Value> = db.aql_str("FOR u IN test_collection LIMIT 3 RETURN u").unwrap();
+//! #[tokio::main]
+//! async fn main() {
+//!     let conn = Connection::establish_jwt("http://localhost:8529", "username", "password").await.unwrap();
+//!     let db = conn.db("test_db").await.unwrap();
+//!     let resp: Vec<Value> = db.aql_str("FOR u IN test_collection LIMIT 3 RETURN u").await.unwrap();
+//! }
 //! ```
 //!
 //! - Strong typed result
@@ -158,9 +169,12 @@
 //!     pub password: String,
 //! }
 //!
-//! let conn = Connection::establish_jwt("http://localhost:8529", "username", "password").unwrap();
-//! let db = conn.db("test_db").unwrap();
-//! let resp: Vec<User> = db.aql_str("FOR u IN test_collection RETURN u").unwrap();
+//! #[tokio::main]
+//! async fn main() {
+//!     let conn = Connection::establish_jwt("http://localhost:8529", "username", "password").await.unwrap();
+//!     let db = conn.db("test_db").await.unwrap();
+//!     let resp: Vec<User> = db.aql_str("FOR u IN test_collection RETURN u").await.unwrap();
+//! }
 //! ```
 //!
 //! #### Batch query
@@ -169,8 +183,9 @@
 //!
 //! #### Fetch All Results
 //!
-//! There are three functions for AQL query that fetch all results from ArangoDB.
-//! These functions internally fetch batch results one after another to get all results.
+//! There are three functions for AQL query that fetch all results from
+//! ArangoDB. These functions internally fetch batch results one after another
+//! to get all results.
 //!
 //! The functions for fetching all results are listed as bellow:
 //!
@@ -190,11 +205,13 @@
 //!     pub password: String,
 //! }
 //!
-//! fn main() {
-//!     let conn = Connection::establish_jwt("http://localhost:8529", "username", "password").unwrap();
-//!     let db = conn.db("test_db").unwrap();
+//! #[tokio::main]
+//! async fn main() {
+//!     let conn = Connection::establish_jwt("http://localhost:8529", "username", "password").await.unwrap();
+//!     let db = conn.db("test_db").await.unwrap();
 //!     let result: Vec<User> = db
 //!         .aql_str(r#"FOR i in test_collection FILTER i.username=="test2" return i"#)
+//!         .await
 //!         .unwrap();
 //! }
 //! ```
@@ -214,17 +231,22 @@
 //!     pub password: String,
 //! }
 //!
-//! let conn = Connection::establish_jwt("http://localhost:8529", "username", "password").unwrap();
-//! let db = conn.db("test_db").unwrap();
+//! #[tokio::main]
+//! async fn main() {
+//!     let conn = Connection::establish_jwt("http://localhost:8529", "username", "password").await.unwrap();
+//!     let db = conn.db("test_db").await.unwrap();
 //!
-//! let mut vars = HashMap::new();
-//! let user = User{
-//!     username:"test".to_string(),
-//!     password:"test_pwd".to_string(),
-//! };
-//! vars.insert("user", serde_json::value::to_value(&user).unwrap());
-//! let result:Vec<Document<User>>= db.aql_bind_vars(r#"FOR i in test_collection FILTER i==@user return i"#, vars).unwrap();
-//!
+//!     let mut vars = HashMap::new();
+//!     let user = User{
+//!         username:"test".to_string(),
+//!         password:"test_pwd".to_string(),
+//!     };
+//!     vars.insert("user", serde_json::value::to_value(&user).unwrap());
+//!     let result:Vec<Document<User>>= db
+//! 	    .aql_bind_vars(r#"FOR i in test_collection FILTER i==@user return i"#, vars)
+//!         .await
+//!         .unwrap();
+//! }
 //! ```
 //!
 //! - `aql_query`
@@ -239,13 +261,19 @@
 //! use arangors::{AqlQuery, Connection, Cursor, Database};
 //! use serde_json::value::Value;
 //!
-//! let conn = Connection::establish_jwt("http://localhost:8529", "username", "password").unwrap();
-//! let database = conn.db("test_db").unwrap();
+//! #[tokio::main]
+//! async fn main() {
+//!     let conn = Connection::establish_jwt("http://localhost:8529", "username", "password").await.unwrap();
+//!     let database = conn.db("test_db").await.unwrap();
 //!
-//! let aql = AqlQuery::new("FOR u IN @@collection LIMIT 3 RETURN u").batch_size(1).count(true).bind_var("@collection","test_collection");
+//!     let aql = AqlQuery::new("FOR u IN @@collection LIMIT 3 RETURN u")
+//!         .batch_size(1)
+//!         .count(true)
+//!         .bind_var("@collection","test_collection");
 //!
-//! let resp: Vec<Value> = database.aql_query(aql).unwrap();
-//! println!("{:?}", resp);
+//!     let resp: Vec<Value> = database.aql_query(aql).await.unwrap();
+//!     println!("{:?}", resp);
+//! }
 //! ```
 //!
 //! ### Contributing
@@ -262,7 +290,6 @@ pub mod collection;
 pub mod connection;
 pub mod database;
 pub mod document;
-mod query;
 pub mod response;
 
 pub use crate::collection::Collection;

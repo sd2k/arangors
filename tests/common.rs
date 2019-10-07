@@ -14,10 +14,14 @@ pub fn test_setup() {
     }
 }
 
-pub fn test_root_and_normal<T>(test: T) -> ()
-where
-    T: Fn(&str, &str) -> (),
-{
-    test(ROOT_USERNAME, ROOT_PASSWORD);
-    test(NORMAL_USERNAME, NORMAL_PASSWORD);
+#[macro_export]
+macro_rules! test_root_and_normal {
+    ($t:ident) => {
+        $t(crate::common::ROOT_USERNAME, crate::common::ROOT_PASSWORD).await;
+        $t(
+            crate::common::NORMAL_USERNAME,
+            crate::common::NORMAL_PASSWORD,
+        )
+        .await;
+    };
 }

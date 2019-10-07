@@ -13,18 +13,19 @@ use serde_json::value::Value;
 
 use super::aql::QueryStats;
 
-pub(crate) fn serialize_query_response<T>(
-    mut resp: reqwest::Response,
+pub(crate) async fn serialize_query_response<T>(
+    resp: reqwest::Response,
 ) -> Result<Cursor<T>, FailureError>
 where
     T: DeserializeOwned + Debug,
 {
-    let response_text = resp.text()?;
+    let status_code = resp.status();
+    let response_text = resp.text().await?;
     let response: QueryResponse<T> =
         serde_json::from_str(response_text.as_str()).map_err(|err| {
             error!(
-                "Failed to serialize.\n\tResponse: {:?} \n\tText: {:?}",
-                resp, response_text
+                "Failed to serialize.\n\tStatus: {:?} \n\tText: {:?}",
+                status_code, response_text
             );
             err
         })?;
@@ -39,11 +40,11 @@ where
 /// response of success and failure.
 ///
 /// When ArangoDB server response error code, then an error would be cast.
-pub(crate) fn serialize_response<T>(resp: reqwest::Response) -> Result<T, FailureError>
+pub(crate) async fn serialize_response<T>(resp: reqwest::Response) -> Result<T, FailureError>
 where
     T: DeserializeOwned + Debug,
 {
-    let response = try_serialize_response(resp);
+    let response = try_serialize_response(resp).await;
     match response {
         Response::Ok(resp) => Ok(resp.result),
         Response::Err(error) => Err(format_err!("{}", error.message)),
@@ -54,16 +55,17 @@ where
 /// server is accepted or not.
 /// It would return error if response error code.
 /// TODO more intuitive response error enum
-pub(crate) fn try_serialize_response<T>(mut resp: reqwest::Response) -> Response<T>
+pub(crate) async fn try_serialize_response<T>(resp: reqwest::Response) -> Response<T>
 where
     T: DeserializeOwned + Debug,
 {
-    let response_text = resp.text().unwrap();
+    let status_code = resp.status();
+    let response_text = resp.text().await.unwrap();
     let response: Response<T> = serde_json::from_str(response_text.as_str())
         .map_err(|err| {
             error!(
-                "Failed to serialize.\n\tResponse: {:?} \n\tText: {:?}",
-                resp, response_text
+                "Failed to serialize.\n\tStatus: {:?} \n\tText: {:?}",
+                status_code, response_text
             );
             err
         })

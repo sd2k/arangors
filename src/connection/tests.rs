@@ -13,8 +13,8 @@ fn test_setup() {
     env_logger::init();
 }
 
-#[test]
-fn test_jwt_auth() {
+#[tokio::test]
+async fn test_jwt_auth() {
     // let _ = pretty_env_logger::try_init();
     let conn = Connection {
         arango_url: Url::parse(URL).unwrap(),
@@ -23,7 +23,7 @@ fn test_jwt_auth() {
         state: Normal,
         phantom: (),
     };
-    let jwt = conn.jwt_login(USERNAME, PASSWORD).unwrap();
+    let jwt = conn.jwt_login(USERNAME, PASSWORD).await.unwrap();
     info!("JWT login success. Token: {}", jwt);
     let not_empty = jwt.len() > 1;
     assert_eq!(not_empty, true);
